@@ -1,0 +1,4 @@
+import { router } from 'expo-router';
+import { Screen, Label, Title, Status, Button, Divider, Card, Body } from '@/components/ui';
+import { usePortal } from '@/state/PortalProvider';
+export default function Home(){const {place,realtimeOnline}=usePortal();if(!place)return null;return <Screen><Label>Portal</Label><Title>{place.name}</Title><Status online={realtimeOnline}/><Body muted>{place.location||'No location set'}</Body><Card><Label>Your Portal code</Label><Title>{place.publicCode}</Title><Button title="Show QR" kind="secondary" onPress={()=>router.push('/qr')}/></Card><Button title="Connect to a Place" onPress={()=>router.push('/connect')}/><Divider/><Label>Quick access</Label><Button title="Favorites" kind="secondary" onPress={()=>router.push('/favorites')}/><Button title="Trusted Places" kind="secondary" onPress={()=>router.push('/trusted')}/><Button title="Session History" kind="secondary" onPress={()=>router.push('/history')}/></Screen>}

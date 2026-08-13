@@ -1,0 +1,14 @@
+CREATE INDEX idx_portal_place_name ON portal_place (lower(name));
+CREATE INDEX idx_portal_device_place_id ON portal_device (place_id);
+CREATE INDEX idx_portal_device_last_seen_at ON portal_device (last_seen_at DESC);
+CREATE INDEX idx_connection_request_receiver_pending ON connection_request (receiver_device_id, status, expires_at);
+CREATE INDEX idx_connection_request_caller_created ON connection_request (caller_device_id, created_at DESC);
+CREATE INDEX idx_portal_session_caller_created ON portal_session (caller_device_id, created_at DESC);
+CREATE INDEX idx_portal_session_receiver_created ON portal_session (receiver_device_id, created_at DESC);
+CREATE INDEX idx_portal_session_active_caller ON portal_session (caller_device_id) WHERE status IN ('CREATED','CONNECTING','ACTIVE','RECONNECTING');
+CREATE INDEX idx_portal_session_active_receiver ON portal_session (receiver_device_id) WHERE status IN ('CREATED','CONNECTING','ACTIVE','RECONNECTING');
+CREATE INDEX idx_trusted_peer_owner ON trusted_peer (owner_device_id);
+CREATE INDEX idx_audit_event_device_created ON audit_event (device_id, created_at DESC);
+CREATE INDEX idx_audit_event_place_created ON audit_event (place_id, created_at DESC);
+CREATE INDEX idx_audit_event_type_created ON audit_event (event_type, created_at DESC);
+CREATE INDEX idx_idempotency_expiry ON api_idempotency (expires_at);

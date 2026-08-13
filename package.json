@@ -1,0 +1,33 @@
+{
+  "name": "company-portal-expo",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "postinstall": "npm run build --workspace @portal/contracts",
+    "dev": "npm run dev:server",
+    "dev:server": "npm run dev --workspace @portal/server",
+    "dev:mobile": "npm run start --workspace @portal/mobile",
+    "android": "npm run android --workspace @portal/mobile",
+    "prebuild:android": "npm run prebuild:android --workspace @portal/mobile",
+    "build": "npm run build --workspace @portal/contracts && npm run build --workspace @portal/server && npm run typecheck --workspace @portal/mobile",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspace @portal/contracts && npm run test --workspace @portal/server && npm run test --workspace @portal/mobile",
+    "db:migrate": "npm run db:migrate --workspace @portal/server",
+    "infra:up": "docker compose up -d postgres redis livekit",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "verify": "node scripts/verify.mjs",
+    "test:integration": "node scripts/integration-control-plane.mjs"
+  },
+  "overrides": {
+    "react": "19.2.3"
+  }
+}
