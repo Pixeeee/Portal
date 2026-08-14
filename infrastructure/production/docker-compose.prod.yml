@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-    env_file: .env
+    env_file: ${PORTAL_PRODUCTION_ENV_FILE:-.env}
     volumes: ["portal_pg:/var/lib/postgresql/data"]
   redis:
     image: redis:8-alpine
@@ -12,7 +12,7 @@ services:
   livekit:
     image: livekit/livekit-server:v1.13.5
     restart: unless-stopped
-    env_file: .env
+    env_file: ${PORTAL_PRODUCTION_ENV_FILE:-.env}
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     command: ["--config", "/etc/livekit.yaml"]
@@ -28,7 +28,7 @@ services:
       context: ../..
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
-    env_file: .env
+    env_file: ${PORTAL_PRODUCTION_ENV_FILE:-.env}
     ports: ["8080:8080"]
     depends_on: [postgres, redis, livekit]
     command: ["sh", "-lc", "npm run db:migrate --workspace @portal/server && npm run start --workspace @portal/server"]

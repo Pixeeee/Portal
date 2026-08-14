@@ -116,7 +116,8 @@ check(
     return /userRole|rolePermission|RBAC|email\/password login/i.test(source);
   })
 );
-check('No .env committed',!exists('.env'));
+check('No .env committed',!gitTracked('.env'));
+check('No emulator-only runtime URL in maintained source',!applicationSourceFiles.some(f=>/https?:\/\/10\.0\.2\.2|wss?:\/\/10\.0\.2\.2/.test(fs.readFileSync(f,'utf8'))));
 check('Hardware acceptance 20 scenarios',(text('docs/HARDWARE_ACCEPTANCE.md').match(/- \[ \]/g)||[]).length===20);
 
 for(const f of ['package.json','apps/mobile/package.json','apps/server/package.json','packages/contracts/package.json']){try{JSON.parse(text(f));check(`valid JSON: ${f}`,true)}catch(e){check(`valid JSON: ${f}`,false,String(e))}}

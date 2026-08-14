@@ -6,7 +6,7 @@ This is the npm/TypeScript transformation of the original Kotlin/Ktor specificat
 
 ## Stack
 
-- Mobile: Expo SDK 57, Expo Router, React Native, TypeScript
+- Mobile: Expo SDK 56, Expo Router, React Native, TypeScript
 - Media: LiveKit React Native/WebRTC
 - QR: Expo Camera + react-native-qrcode-svg
 - Local data: Expo SQLite
@@ -140,6 +140,7 @@ See `docs/HARDWARE_ACCEPTANCE.md` for the complete checklist.
 ```bash
 npm install
 npm run verify
+npm run verify:production
 npm run build
 npm test
 npm run typecheck

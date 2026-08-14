@@ -32,5 +32,7 @@ const incoming=await bw.wait('CONNECTION_REQUESTED');if(incoming.payload.request
 await req(`/api/v1/connections/requests/${connection.id}/accept`,{method:'POST',identity:b.identity,body:{}});
 const [ar,br]=await Promise.all([aw.wait('SESSION_READY'),bw.wait('SESSION_READY')]);if(ar.payload.sessionId!==br.payload.sessionId)throw new Error('session mismatch');
 const [ac,bc]=await Promise.all([req(`/api/v1/sessions/${ar.payload.sessionId}/credentials`,{method:'POST',identity:a.identity,body:{}}),req(`/api/v1/sessions/${br.payload.sessionId}/credentials`,{method:'POST',identity:b.identity,body:{}})]);if(ac.roomName!==bc.roomName)throw new Error('credential room mismatch');
+if(/localhost|127\.0\.0\.1/.test(ac.serverUrl)||/localhost|127\.0\.0\.1/.test(bc.serverUrl))throw new Error(`credentials exposed non-device LiveKit URL: ${ac.serverUrl}`);
+if(process.env.EXPECTED_LIVEKIT_PUBLIC_URL&&ac.serverUrl!==process.env.EXPECTED_LIVEKIT_PUBLIC_URL)throw new Error(`LiveKit public URL mismatch: ${ac.serverUrl}`);
 await req(`/api/v1/sessions/${ar.payload.sessionId}/started`,{method:'POST',identity:a.identity,body:{}});await req(`/api/v1/sessions/${ar.payload.sessionId}/end`,{method:'POST',identity:a.identity,body:{reason:'INTEGRATION_TEST'}});await Promise.all([aw.wait('SESSION_ENDED'),bw.wait('SESSION_ENDED')]);
 aw.ws.close();bw.ws.close();console.log('PASS: two-device control-plane integration scenario');

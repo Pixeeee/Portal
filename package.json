@@ -25,6 +25,7 @@
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
     "verify": "node scripts/verify.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
     "test:integration": "node scripts/integration-control-plane.mjs"
   },
   "overrides": {

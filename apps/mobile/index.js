@@ -1,3 +1,13 @@
-import { registerGlobals } from '@livekit/react-native';
+const { registerGlobals } = require('@livekit/react-native');
+
+/*
+ * LiveKit MUST register WebRTC globals before Expo Router or
+ * any route imports livekit-client.
+ */
 registerGlobals();
-import 'expo-router/entry';
+
+/*
+ * Use require(), not static import.
+ * Static ES imports are evaluated before registerGlobals().
+ */
+require('expo-router/entry');

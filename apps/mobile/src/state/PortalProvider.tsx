@@ -43,7 +43,10 @@ export function PortalProvider({children}:{children:React.ReactNode}){
 
   const registerNotifications=useCallback(async(currentApi:PortalApi)=>{
     try{
-      if(Platform.OS==='android') await Notifications.setNotificationChannelAsync('portal-calls',{name:'Portal calls',importance:Notifications.AndroidImportance.MAX,sound:'default'});
+      if(Platform.OS==='android') {
+        await Notifications.deleteNotificationChannelAsync('portal-calls').catch(()=>undefined);
+        await Notifications.setNotificationChannelAsync('portal-calls',{name:'Portal calls',importance:Notifications.AndroidImportance.MAX});
+      }
       const perms=await Notifications.getPermissionsAsync(); let granted=perms.granted;
       if(!granted) granted=(await Notifications.requestPermissionsAsync()).granted;
       const projectId=Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;

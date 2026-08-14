@@ -3,11 +3,17 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'Portal',
   slug: 'company-portal',
+  owner: 'pixeee',
   version: '1.0.0',
   platforms: ['android'],
   orientation: 'default',
   scheme: 'portal',
   userInterfaceStyle: 'dark',
+  splash: {
+    image: './assets/portal-splash.png',
+    backgroundColor: '#111416',
+    resizeMode: 'contain',
+  },
   android: {
     package: 'com.company.portal',
     permissions: ['CAMERA', 'RECORD_AUDIO', 'POST_NOTIFICATIONS', 'ACCESS_NETWORK_STATE', 'MODIFY_AUDIO_SETTINGS'],
@@ -37,7 +43,7 @@ const config: ExpoConfig = {
     '@config-plugins/react-native-webrtc',
   ],
   experiments: { typedRoutes: true },
-  extra: { eas: { projectId: process.env.EXPO_PROJECT_ID ?? '' } },
+  extra: { eas: { projectId: '61777354-a7fa-4414-bd44-7a4a8e70739c' } },
 };
 
 export default config;
