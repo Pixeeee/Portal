@@ -40,7 +40,7 @@ for(const f of routes)check(`Expo route: ${f}`,exists(`apps/mobile/src/app/${f}`
 
 check('npm workspaces configured',contains('package.json','"workspaces"')&&contains('package.json','apps/*')&&contains('package.json','packages/*'));
 check('Expo Router dependency',contains('apps/mobile/package.json','expo-router'));
-check('Expo SDK 56 dependency',contains('apps/mobile/package.json','"expo": "^56')||contains('apps/mobile/package.json','"expo": "~56'));
+check('Expo SDK 57 dependency',contains('apps/mobile/package.json','"expo": "^57')||contains('apps/mobile/package.json','"expo": "~57'));
 check('Android-only Expo platform',contains('apps/mobile/app.config.ts',"platforms: ['android']"));
 check('minSdk 26 through config plugin',contains('apps/mobile/app.config.ts','minSdkVersion: 26')&&contains('apps/mobile/app.config.ts','expo-build-properties'));
 check('target/compile API 36',contains('apps/mobile/app.config.ts','targetSdkVersion: 36')&&contains('apps/mobile/app.config.ts','compileSdkVersion: 36'));

@@ -29,6 +29,11 @@
     "test:integration": "node scripts/integration-control-plane.mjs"
   },
   "overrides": {
-    "react": "19.2.3"
+    "expo": "^57.0.9",
+    "react": "19.2.3",
+    "react-native": "0.86.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.4"
   }
 }

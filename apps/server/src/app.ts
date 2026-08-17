@@ -5,7 +5,7 @@ import { isPortalCode, normalizePortalCode, type DeviceBootstrapRequest } from '
 import { config } from './config.js';
 import { pool, tx } from './db.js';
 import { ApiError, authenticateRequest, id, rateLimit, secretHash, secretsEqual, type DevicePrincipal } from './security.js';
-import { isOnline, redis } from './presence.js';
+import { isOnline, isRedisReady, redis } from './presence.js';
 import { attachRealtime, emit, isRealtimeConnected } from './realtime.js';
 import { ensureRoom, participantToken, roomName } from './livekit.js';
 import { registerPushToken, sendIncomingPush } from './push.js';
@@ -104,10 +104,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   if (method === 'GET' && p === '/health/live') return json(res, 200, { status: 'ok' });
   if (method === 'GET' && p === '/health/ready') {
     const db = await pool.query('SELECT 1').then(() => true).catch(() => false);
-    const rd = await redis
-    .ping()
-    .then((reply: string) => reply === 'PONG')
-    .catch(() => false);
+    const rd = await isRedisReady();
     return json(res, db && rd ? 200 : 503, { status: db && rd ? 'ready' : 'degraded', database: db, redis: rd });
   }
   if (method === 'POST' && p === '/api/v1/devices/bootstrap') {
@@ -132,7 +129,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
   const principal = await authenticateRequest(req);
   if (method === 'GET' && p === '/api/v1/diagnostics') {
     const db = await pool.query('SELECT 1').then(() => true).catch(() => false);
-    const rd = await redis.ping().then(() => true).catch(() => false);
+    const rd = await isRedisReady();
     const t0 = Date.now(); const lk = await fetch(config.liveKitUrl).then(() => true).catch(() => false);
     return json(res, 200, { backend: true, database: db, redis: rd, liveKit: lk, latencyMs: Date.now() - t0 });
   }

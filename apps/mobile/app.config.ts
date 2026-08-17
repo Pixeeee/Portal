@@ -20,12 +20,19 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-dev-client',
+    'expo-sqlite',
+    'expo-status-bar',
     ['expo-build-properties', {
       android: {
         minSdkVersion: 26,
         compileSdkVersion: 36,
         targetSdkVersion: 36,
+        buildArchs: ['armeabi-v7a', 'arm64-v8a'],
+        enableMinifyInReleaseBuilds: true,
+        enableShrinkResourcesInReleaseBuilds: true,
+        enableBundleCompression: true,
+        useLegacyPackaging: true,
+        networkInspector: false,
         usesCleartextTraffic: process.env.NODE_ENV !== 'production',
       },
     }],

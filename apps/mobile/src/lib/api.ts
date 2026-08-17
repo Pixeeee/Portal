@@ -11,7 +11,17 @@ export class PortalApi {
     return `PortalDevice ${this.identity.deviceId}:${this.identity.deviceSecret}`;
   }
   async request<T>(path:string, init:RequestInit={}, auth=true):Promise<T> {
-    const response=await fetch(`${API_URL}${path}`,{...init,headers:{'content-type':'application/json',...(auth?{Authorization:this.auth()}:{}),...(init.headers||{})}});
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    let response: Response;
+    try {
+      response=await fetch(`${API_URL}${path}`,{...init,signal:controller.signal,headers:{'content-type':'application/json',...(auth?{Authorization:this.auth()}:{}),...(init.headers||{})}});
+    } catch (error: any) {
+      if (error?.name === 'AbortError') throw new PortalApiError(408, 'REQUEST_TIMEOUT', 'Portal service did not respond. Check staging health and try again.');
+      throw new PortalApiError(0, 'NETWORK_ERROR', error?.message || 'Unable to reach Portal service.');
+    } finally {
+      clearTimeout(timeout);
+    }
     if(!response.ok){let e:any={};try{e=await response.json();}catch{}throw new PortalApiError(response.status,e.code||'HTTP_ERROR',e.message||`Request failed (${response.status})`);}
     if(response.status===204)return undefined as T; return response.json() as Promise<T>;
   }

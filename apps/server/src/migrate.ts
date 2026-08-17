@@ -4,8 +4,21 @@ import { fileURLToPath } from 'node:url';
 import { pool } from './db.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-let dir = path.join(here, 'db', 'migrations');
-try { await fs.access(dir); } catch { dir = path.resolve(process.cwd(), 'src/db/migrations'); }
+const candidates = [
+  path.join(here, 'db', 'migrations'),
+  path.resolve(here, '../src/db/migrations'),
+  path.resolve(process.cwd(), 'apps/server/src/db/migrations'),
+  path.resolve(process.cwd(), 'src/db/migrations'),
+];
+let dir = '';
+for (const candidate of candidates) {
+  try {
+    await fs.access(candidate);
+    dir = candidate;
+    break;
+  } catch {}
+}
+if (!dir) throw new Error(`Migration directory not found. Checked: ${candidates.join(', ')}`);
 await pool.query(`CREATE TABLE IF NOT EXISTS schema_migration (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
 const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.sql')).sort();
 for (const file of files) {

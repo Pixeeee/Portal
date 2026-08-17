@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Camera } from 'expo-camera';
 import { useKeepAwake } from 'expo-keep-awake';
 import { AudioSession, LiveKitRoom, VideoTrack, isTrackReference, useRoomContext, useTracks } from '@livekit/react-native';
-import { ConnectionState, Track } from 'livekit-client';
+import { ConnectionState, Track, VideoPresets } from 'livekit-client';
 import type { SessionCredentials } from '@portal/contracts';
 import { usePortal } from '@/state/PortalProvider';
 import { Body, Button, Loading, StatusPill, colors } from '@/components/ui';
@@ -16,20 +16,39 @@ export default function LiveRoute() {
   const { api } = usePortal();
   const [credentials, setCredentials] = useState<SessionCredentials | null>(null);
   const [prefs, setPrefs] = useState<PortalMediaPreferences | null>(null);
-  const [permission, setPermission] = useState<'checking' | 'granted' | 'denied'>('checking');
+  const [permission, setPermission] = useState<'checking' | 'granted'>('checking');
+  const [mediaWarning, setMediaWarning] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => { void getMediaPreferences().then(setPrefs); }, []);
-  useEffect(() => { void (async () => {
-    const [cam, mic] = await Promise.all([Camera.requestCameraPermissionsAsync(), Camera.requestMicrophonePermissionsAsync()]);
-    setPermission(cam.granted && mic.granted ? 'granted' : 'denied');
-  })(); }, []);
-  useEffect(() => { if (permission === 'granted' && api && sessionId) void api.credentials(sessionId).then(setCredentials).catch(e => setError(e.message)); }, [permission, api, sessionId]);
+  useEffect(() => { if (!prefs) return; void (async () => {
+    const [cam, mic] = await Promise.all([
+      prefs.cameraEnabled ? Camera.requestCameraPermissionsAsync() : Promise.resolve({ granted: true }),
+      prefs.microphoneEnabled ? Camera.requestMicrophonePermissionsAsync() : Promise.resolve({ granted: true }),
+    ]);
+    const nextPrefs = {
+      ...prefs,
+      cameraEnabled: prefs.cameraEnabled && cam.granted,
+      microphoneEnabled: prefs.microphoneEnabled && mic.granted,
+    };
+    if (!cam.granted || !mic.granted) {
+      setMediaWarning('Local camera or microphone is off because permission was not granted. You can still join and receive the remote Portal.');
+      setPrefs(nextPrefs);
+    }
+    setPermission('granted');
+  })(); }, [prefs?.cameraEnabled, prefs?.microphoneEnabled]);
+  const loadCredentials = async () => {
+    if (!api || !sessionId) return;
+    setError('');
+    setCredentials(null);
+    try { setCredentials(await api.credentials(sessionId)); }
+    catch (e: any) { setError(e.message || 'Unable to get media credentials.'); }
+  };
+  useEffect(() => { if (permission === 'granted' && api && sessionId) void loadCredentials(); }, [permission, api, sessionId]);
   useEffect(() => { if (permission !== 'granted' || !prefs) return; void AudioSession.startAudioSession().then(async () => { try { await (AudioSession as any).selectAudioOutput(prefs.speakerEnabled ? 'force_speaker' : 'force_earpiece'); } catch {} }); return () => { void AudioSession.stopAudioSession(); }; }, [permission, prefs]);
 
   if (permission === 'checking' || !prefs) return <Loading label="Checking camera and microphone..." />;
-  if (permission === 'denied') return <View style={s.center}><Text style={s.title}>Camera and microphone are required.</Text><Body muted>Portal never activates the camera silently. Grant both permissions in system settings, then reopen the session.</Body><Button title="Go Home" onPress={() => router.replace('/(tabs)')} /></View>;
-  if (error) return <View style={s.center}><Text style={s.title}>Unable to start Portal</Text><Body>{error}</Body><Button title="Go Home" onPress={() => router.replace('/(tabs)')} /></View>;
+  if (error) return <View style={s.center}><Text style={s.title}>Unable to start Portal</Text><Body>{error}</Body><Button title="Retry" onPress={() => void loadCredentials()} /><Button title="Go Home" kind="secondary" onPress={() => router.replace('/(tabs)')} /></View>;
   if (!credentials) return <Loading label="Preparing secure media session..." />;
 
   return <LiveKitRoom
@@ -37,15 +56,16 @@ export default function LiveRoute() {
     token={credentials.participantToken}
     connect
     audio={prefs.microphoneEnabled}
-    video={prefs.cameraEnabled}
-    options={{ adaptiveStream: { pixelDensity: 'screen' }, dynacast: true }}
+    video={prefs.cameraEnabled ? { resolution: VideoPresets.h360.resolution, facingMode: 'user' } : false}
+    options={{ adaptiveStream: { pixelDensity: 'screen', pauseVideoInBackground: true }, dynacast: true, videoCaptureDefaults: { resolution: VideoPresets.h360.resolution } }}
+    connectOptions={{ websocketTimeout: 20_000, peerConnectionTimeout: 25_000, maxRetries: 2 }}
     onConnected={() => void api?.sessionStarted(sessionId)}
     onError={(e) => setError(e.message)}>
-    <RoomContent sessionId={sessionId} initialPrefs={prefs} />
+    <RoomContent sessionId={sessionId} initialPrefs={prefs} mediaWarning={mediaWarning} />
   </LiveKitRoom>;
 }
 
-function RoomContent({ sessionId, initialPrefs }: { sessionId: string; initialPrefs: PortalMediaPreferences }) {
+function RoomContent({ sessionId, initialPrefs, mediaWarning }: { sessionId: string; initialPrefs: PortalMediaPreferences; mediaWarning: string }) {
   const { api } = usePortal();
   const room = useRoomContext();
   const tracks = useTracks([Track.Source.Camera]);
@@ -65,9 +85,9 @@ function RoomContent({ sessionId, initialPrefs }: { sessionId: string; initialPr
   useEffect(() => { show(); return () => { if (timer.current) clearTimeout(timer.current); }; }, []);
   useEffect(() => { if (room.state !== ConnectionState.Connected) return; const i = setInterval(() => setSeconds(s => s + 1), 1000); return () => clearInterval(i); }, [room.state]);
   async function toggleMic() { const next = !mic; await room.localParticipant.setMicrophoneEnabled(next); setMic(next); show(); }
-  async function toggleCamera() { const next = !camera; await room.localParticipant.setCameraEnabled(next); setCamera(next); show(); }
+  async function toggleCamera() { const next = !camera; await room.localParticipant.setCameraEnabled(next, { resolution: VideoPresets.h360.resolution }); setCamera(next); show(); }
   async function toggleSelfView() { const next = !selfView; setSelfView(next); await setMediaPreference('showLocalPreview', next); show(); }
-  async function switchCamera() { const publication = room.localParticipant.getTrackPublication(Track.Source.Camera); const track = publication?.track as any; if (track?.restartTrack) { const next = !front; await track.restartTrack({ facingMode: next ? 'user' : 'environment' }); setFront(next); } show(); }
+  async function switchCamera() { if (!camera) return show(); const publication = room.localParticipant.getTrackPublication(Track.Source.Camera); const track = publication?.track as any; if (track?.restartTrack) { const next = !front; await track.restartTrack({ facingMode: next ? 'user' : 'environment', resolution: VideoPresets.h360.resolution }); setFront(next); } show(); }
   async function toggleSpeaker() { const next = !speaker; try { await (AudioSession as any).selectAudioOutput(next ? 'force_speaker' : 'force_earpiece'); } catch {} setSpeaker(next); show(); }
   async function end() { if (ending) return; setEnding(true); try { await api?.endSession(sessionId); } finally { room.disconnect(); router.replace('/(tabs)'); } }
   const connecting = room.state !== ConnectionState.Connected;
@@ -82,6 +102,7 @@ function RoomContent({ sessionId, initialPrefs }: { sessionId: string; initialPr
       <StatusPill tone={statusTone} label={room.state === ConnectionState.Reconnecting ? 'Reconnecting' : connecting ? 'Connecting' : 'Live'} />
     </View> : null}
     {room.state === ConnectionState.Reconnecting ? <View style={s.notice}><Text style={s.noticeText}>Connection unstable - holding the window open and retrying.</Text></View> : null}
+    {mediaWarning && controls ? <View style={[s.notice, s.permissionNotice]}><Text style={s.noticeText}>{mediaWarning}</Text></View> : null}
     {selfView && local && isTrackReference(local) && camera ? <View style={s.preview}><VideoTrack trackRef={local} style={StyleSheet.absoluteFill} mirror={front} objectFit="cover" /><Text style={s.you}>SELF</Text></View> : null}
     {controls ? <View style={s.controls}>
       <View style={s.controlRow}><Control label={mic ? 'Mute' : 'Unmute'} active={!mic} onPress={() => void toggleMic()} /><Control label={camera ? 'Camera' : 'Cam Off'} active={!camera} onPress={() => void toggleCamera()} /><Control label="Switch" onPress={() => void switchCamera()} /><Control label={speaker ? 'Speaker' : 'Earpiece'} active={speaker} onPress={() => void toggleSpeaker()} /><Control label={ending ? 'Ending' : 'End'} danger onPress={() => void end()} /></View>
@@ -105,6 +126,7 @@ const s = StyleSheet.create({
   placeTitle: { color: '#fff', fontWeight: '900', fontSize: 14 },
   placeMeta: { color: colors.muted, fontSize: 11, marginTop: 3, fontWeight: '700' },
   notice: { position: 'absolute', top: 108, left: 16, right: 16, padding: 11, borderRadius: 8, borderWidth: 1, borderColor: `${colors.warning}66`, backgroundColor: `${colors.warning}22` },
+  permissionNotice: { top: 154 },
   noticeText: { color: colors.warning, fontSize: 12, fontWeight: '800' },
   preview: { position: 'absolute', right: 16, bottom: 142, width: 96, height: 136, borderRadius: 8, overflow: 'hidden', backgroundColor: '#222', borderWidth: 1, borderColor: '#FFFFFF44' },
   you: { position: 'absolute', top: 7, left: 7, color: '#fff', fontWeight: '900', fontSize: 9, backgroundColor: '#0009', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4 },
